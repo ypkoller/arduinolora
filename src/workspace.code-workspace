@@ -1,0 +1,20 @@
+{
+	"folders": [
+		{
+			"path": "../../../../../platformio/projects/lora/helteclorafirst"
+		},
+		{
+			"name": "210420-212536-uno",
+			"path": "../../210420-212536-uno"
+		},
+		{
+			"name": "Blinki",
+			"path": "../../Blinki"
+		},
+		{
+			"name": "ArduinoLora",
+			"path": ".."
+		}
+	],
+	"settings": {}
+}

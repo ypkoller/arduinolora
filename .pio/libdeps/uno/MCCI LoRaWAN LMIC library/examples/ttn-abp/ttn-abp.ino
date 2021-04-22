@@ -1,11 +1,43 @@
-#include <Arduino.h>
+/*******************************************************************************
+ * Copyright (c) 2015 Thomas Telkamp and Matthijs Kooijman
+ * Copyright (c) 2018 Terry Moore, MCCI
+ *
+ * Permission is hereby granted, free of charge, to anyone
+ * obtaining a copy of this document and accompanying files,
+ * to do whatever they want with them without any restriction,
+ * including, but not limited to, copying, modification and redistribution.
+ * NO WARRANTY OF ANY KIND IS PROVIDED.
+ *
+ * This example sends a valid LoRaWAN packet with payload "Hello,
+ * world!", using frequency and encryption settings matching those of
+ * the The Things Network.
+ *
+ * This uses ABP (Activation-by-personalisation), where a DevAddr and
+ * Session keys are preconfigured (unlike OTAA, where a DevEUI and
+ * application key is configured, while the DevAddr and session keys are
+ * assigned/generated in the over-the-air-activation procedure).
+ *
+ * Note: LoRaWAN per sub-band duty-cycle limitation is enforced (1% in
+ * g1, 0.1% in g2), but not the TTN fair usage policy (which is probably
+ * violated by this sketch when left running for longer)!
+ *
+ * To use this sketch, first register your application and device with
+ * the things network, to set or generate a DevAddr, NwkSKey and
+ * AppSKey. Each device should have their own unique values for these
+ * fields.
+ *
+ * Do not forget to define the radio type correctly in
+ * arduino-lmic/project_config/lmic_project_config.h or from your BOARDS.txt.
+ *
+ *******************************************************************************/
+
+ // References:
+ // [feather] adafruit-feather-m0-radio-with-lora-module.pdf
 
 #include <lmic.h>
 #include <hal/hal.h>
 #include <SPI.h>
 
-//only single channcel
-#define CFG_SINGEL_CHANNEL 1
 //
 // For normal use, we require that you edit the sketch to replace FILLMEIN
 // with values assigned by the TTN console. However, for regression tests,
@@ -13,20 +45,25 @@
 // COMPILE_REGRESSION_TEST, and in that case we define FILLMEIN to a non-
 // working but innocuous value.
 //
+#ifdef COMPILE_REGRESSION_TEST
+# define FILLMEIN 0
+#else
+# warning "You must replace the values marked FILLMEIN with real values from the TTN control panel!"
+# define FILLMEIN (#dont edit this, edit the lines that use FILLMEIN)
+#endif
 
 // LoRaWAN NwkSKey, network session key
-// This is the default Semtech key, which is used by the early prototype TTN
-// network.
-static const PROGMEM u1_t NWKSKEY[16] = { 0xD5, 0x72, 0xBA, 0x23, 0x06, 0xC2, 0xEE, 0x5A, 0x38, 0xAD, 0x3F, 0x63, 0x15, 0x5C, 0xB6, 0xF9 };
+// This should be in big-endian (aka msb).
+static const PROGMEM u1_t NWKSKEY[16] = { FILLMEIN };
 
 // LoRaWAN AppSKey, application session key
-// This is the default Semtech key, which is used by the early prototype TTN
-// network.
-static const u1_t PROGMEM APPSKEY[16] = { 0xE8, 0x8A, 0xED, 0x57, 0x50, 0x65, 0x0E, 0xF5, 0x02, 0xFA, 0xBD, 0x1B, 0x93, 0x3C, 0x23, 0xE5  };
+// This should also be in big-endian (aka msb).
+static const u1_t PROGMEM APPSKEY[16] = { FILLMEIN };
 
 // LoRaWAN end-device address (DevAddr)
-static const u4_t  DEVADDR = 0x260B77DA; // <-- Change this address for every node!
-
+// See http://thethingsnetwork.org/wiki/AddressSpace
+// The library converts the address to network byte order as needed, so this should be in big-endian (aka msb) too.
+static const u4_t DEVADDR = FILLMEIN ; // <-- Change this address for every node!
 
 // These callbacks are only used in over-the-air activation, so they are
 // left empty here (we cannot leave them out completely unless
@@ -45,16 +82,14 @@ const unsigned TX_INTERVAL = 60;
 
 // Pin mapping
 // Adapted for Feather M0 per p.10 of [feather]
-// Pin mapping Dragino Shield
 const lmic_pinmap lmic_pins = {
-    .nss = 10,
+    .nss = 8,                       // chip select on feather (rf95module) CS
     .rxtx = LMIC_UNUSED_PIN,
-    .rst = 9,
-    .dio = {2, 6, 7},
+    .rst = 4,                       // reset pin
+    .dio = {6, 5, LMIC_UNUSED_PIN}, // assumes external jumpers [feather_lora_jumper]
+                                    // DIO1 is on JP1-1: is io1 - we connect to GPO6
+                                    // DIO1 is on JP5-3: is D2 - we connect to GPO5
 };
-
-// Forward declaration
-void do_send(osjob_t* j);
 
 void onEvent (ev_t ev) {
     Serial.print(os_getTime());
@@ -162,7 +197,7 @@ void do_send(osjob_t* j){
 void setup() {
 //    pinMode(13, OUTPUT);
     while (!Serial); // wait for Serial to be initialized
-    Serial.begin(9600);
+    Serial.begin(115200);
     delay(100);     // per sample code on RF_95 test
     Serial.println(F("Starting"));
 
@@ -195,34 +230,28 @@ void setup() {
     #endif
 
     #if defined(CFG_eu868)
-      #if defined CFG_SINGEL_CHANNEL
-    		Serial.println("********** using single channel ********");
-			  LMIC_setupChannel(0, 868100000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
-		  #else
-      // Set up the channels used by the Things Network, which corresponds
-      // to the defaults of most gateways. Without this, only three base
-      // channels from the LoRaWAN specification are used, which certainly
-      // works, so it is good for debugging, but can overload those
-      // frequencies, so be sure to configure the full frequency range of
-      // your network here (unless your network autoconfigures them).
-      // Setting up channels should happen after LMIC_setSession, as that
-      // configures the minimal channel set. The LMIC doesn't let you change
-      // the three basic settings, but we show them here.
-      LMIC_setupChannel(0, 868100000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
-      LMIC_setupChannel(1, 868300000, DR_RANGE_MAP(DR_SF12, DR_SF7B), BAND_CENTI);      // g-band
-      LMIC_setupChannel(2, 868500000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
-      LMIC_setupChannel(3, 867100000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
-      LMIC_setupChannel(4, 867300000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
-      LMIC_setupChannel(5, 867500000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
-      LMIC_setupChannel(6, 867700000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
-      LMIC_setupChannel(7, 867900000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
-      LMIC_setupChannel(8, 868800000, DR_RANGE_MAP(DR_FSK,  DR_FSK),  BAND_MILLI);      // g2-band
-      // TTN defines an additional channel at 869.525Mhz using SF9 for class B
-      // devices' ping slots. LMIC does not have an easy way to define set this
-      // frequency and support for class B is spotty and untested, so this
-      // frequency is not configured here.
-      Serial.println("********** using multi channel ********");
-      #endif
+    // Set up the channels used by the Things Network, which corresponds
+    // to the defaults of most gateways. Without this, only three base
+    // channels from the LoRaWAN specification are used, which certainly
+    // works, so it is good for debugging, but can overload those
+    // frequencies, so be sure to configure the full frequency range of
+    // your network here (unless your network autoconfigures them).
+    // Setting up channels should happen after LMIC_setSession, as that
+    // configures the minimal channel set. The LMIC doesn't let you change
+    // the three basic settings, but we show them here.
+    LMIC_setupChannel(0, 868100000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
+    LMIC_setupChannel(1, 868300000, DR_RANGE_MAP(DR_SF12, DR_SF7B), BAND_CENTI);      // g-band
+    LMIC_setupChannel(2, 868500000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
+    LMIC_setupChannel(3, 867100000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
+    LMIC_setupChannel(4, 867300000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
+    LMIC_setupChannel(5, 867500000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
+    LMIC_setupChannel(6, 867700000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
+    LMIC_setupChannel(7, 867900000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
+    LMIC_setupChannel(8, 868800000, DR_RANGE_MAP(DR_FSK,  DR_FSK),  BAND_MILLI);      // g2-band
+    // TTN defines an additional channel at 869.525Mhz using SF9 for class B
+    // devices' ping slots. LMIC does not have an easy way to define set this
+    // frequency and support for class B is spotty and untested, so this
+    // frequency is not configured here.
     #elif defined(CFG_us915) || defined(CFG_au915)
     // NA-US and AU channels 0-71 are configured automatically
     // but only one group of 8 should (a subband) should be active
@@ -272,7 +301,6 @@ void setup() {
 }
 
 void loop() {
-  /*
     unsigned long now;
     now = millis();
     if ((now & 512) != 0) {
@@ -280,7 +308,7 @@ void loop() {
     }
     else {
       digitalWrite(13, LOW);
-    }*/
+    }
 
     os_runloop_once();
 

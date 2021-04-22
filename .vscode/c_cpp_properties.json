@@ -10,11 +10,12 @@
             "includePath": [
                 "/home/yves/Documents/PlatformIO/Projects/ArduinoLora/include",
                 "/home/yves/Documents/PlatformIO/Projects/ArduinoLora/src",
+                "/home/yves/Documents/PlatformIO/Projects/ArduinoLora/.pio/libdeps/uno/MCCI LoRaWAN LMIC library/src",
+                "/home/yves/.platformio/packages/framework-arduino-avr/libraries/SPI/src",
                 "/home/yves/.platformio/packages/framework-arduino-avr/cores/arduino",
                 "/home/yves/.platformio/packages/framework-arduino-avr/variants/standard",
                 "/home/yves/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
                 "/home/yves/.platformio/packages/framework-arduino-avr/libraries/HID/src",
-                "/home/yves/.platformio/packages/framework-arduino-avr/libraries/SPI/src",
                 "/home/yves/.platformio/packages/framework-arduino-avr/libraries/SoftwareSerial/src",
                 "/home/yves/.platformio/packages/framework-arduino-avr/libraries/Wire/src",
                 ""
@@ -24,11 +25,12 @@
                 "path": [
                     "/home/yves/Documents/PlatformIO/Projects/ArduinoLora/include",
                     "/home/yves/Documents/PlatformIO/Projects/ArduinoLora/src",
+                    "/home/yves/Documents/PlatformIO/Projects/ArduinoLora/.pio/libdeps/uno/MCCI LoRaWAN LMIC library/src",
+                    "/home/yves/.platformio/packages/framework-arduino-avr/libraries/SPI/src",
                     "/home/yves/.platformio/packages/framework-arduino-avr/cores/arduino",
                     "/home/yves/.platformio/packages/framework-arduino-avr/variants/standard",
                     "/home/yves/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
                     "/home/yves/.platformio/packages/framework-arduino-avr/libraries/HID/src",
-                    "/home/yves/.platformio/packages/framework-arduino-avr/libraries/SPI/src",
                     "/home/yves/.platformio/packages/framework-arduino-avr/libraries/SoftwareSerial/src",
                     "/home/yves/.platformio/packages/framework-arduino-avr/libraries/Wire/src",
                     ""
