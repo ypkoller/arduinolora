@@ -3,9 +3,7 @@
 #include <lmic.h>
 #include <hal/hal.h>
 #include <SPI.h>
-
-//only single channcel
-#define CFG_SINGEL_CHANNEL 1
+#include <CayenneLPP.h>
 //
 // For normal use, we require that you edit the sketch to replace FILLMEIN
 // with values assigned by the TTN console. However, for regression tests,
@@ -17,15 +15,15 @@
 // LoRaWAN NwkSKey, network session key
 // This is the default Semtech key, which is used by the early prototype TTN
 // network.
-static const PROGMEM u1_t NWKSKEY[16] = { 0xD5, 0x72, 0xBA, 0x23, 0x06, 0xC2, 0xEE, 0x5A, 0x38, 0xAD, 0x3F, 0x63, 0x15, 0x5C, 0xB6, 0xF9 };
+static const PROGMEM u1_t NWKSKEY[16] = { 0xC9, 0xF7, 0xA1, 0x68, 0xF7, 0x06, 0x46, 0x8A, 0xAC, 0x2B, 0x22, 0x62, 0xFD, 0x2C, 0x21, 0xBC };
 
 // LoRaWAN AppSKey, application session key
 // This is the default Semtech key, which is used by the early prototype TTN
 // network.
-static const u1_t PROGMEM APPSKEY[16] = { 0xE8, 0x8A, 0xED, 0x57, 0x50, 0x65, 0x0E, 0xF5, 0x02, 0xFA, 0xBD, 0x1B, 0x93, 0x3C, 0x23, 0xE5  };
+static const u1_t PROGMEM APPSKEY[16] = { 0xA3, 0x2E, 0x24, 0x13, 0x99, 0xC4, 0x46, 0x57, 0x65, 0xAF, 0x97, 0xAA, 0x75, 0x7A, 0x32, 0x7E  };
 
 // LoRaWAN end-device address (DevAddr)
-static const u4_t  DEVADDR = 0x260B77DA; // <-- Change this address for every node!
+static const u4_t  DEVADDR = 0x260BC2DC; // <-- Change this address for every node!
 
 
 // These callbacks are only used in over-the-air activation, so they are
@@ -36,7 +34,7 @@ void os_getArtEui (u1_t* buf) { }
 void os_getDevEui (u1_t* buf) { }
 void os_getDevKey (u1_t* buf) { }
 
-static uint8_t mydata[] = "Hello, world!";
+static CayenneLPP lpp(160);
 static osjob_t sendjob;
 
 // Schedule TX every this many seconds (might become longer due to duty
@@ -153,7 +151,10 @@ void do_send(osjob_t* j){
         Serial.println(F("OP_TXRXPEND, not sending"));
     } else {
         // Prepare upstream data transmission at the next possible time.
-        LMIC_setTxData2(1, mydata, sizeof(mydata)-1, 0);
+        lpp.reset();
+        lpp.addTemperature(1,24.6f);
+
+        LMIC_setTxData2(1, lpp.getBuffer(), lpp.getSize(), 0);
         Serial.println(F("Packet queued"));
     }
     // Next TX is scheduled after TX_COMPLETE event.
@@ -162,7 +163,7 @@ void do_send(osjob_t* j){
 void setup() {
 //    pinMode(13, OUTPUT);
     while (!Serial); // wait for Serial to be initialized
-    Serial.begin(9600);
+    Serial.begin(115200);
     delay(100);     // per sample code on RF_95 test
     Serial.println(F("Starting"));
 
@@ -195,10 +196,6 @@ void setup() {
     #endif
 
     #if defined(CFG_eu868)
-      #if defined CFG_SINGEL_CHANNEL
-    		Serial.println("********** using single channel ********");
-			  LMIC_setupChannel(0, 868100000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
-		  #else
       // Set up the channels used by the Things Network, which corresponds
       // to the defaults of most gateways. Without this, only three base
       // channels from the LoRaWAN specification are used, which certainly
@@ -222,7 +219,6 @@ void setup() {
       // frequency and support for class B is spotty and untested, so this
       // frequency is not configured here.
       Serial.println("********** using multi channel ********");
-      #endif
     #elif defined(CFG_us915) || defined(CFG_au915)
     // NA-US and AU channels 0-71 are configured automatically
     // but only one group of 8 should (a subband) should be active
