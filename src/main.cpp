@@ -4,6 +4,8 @@
 #include <hal/hal.h>
 #include <SPI.h>
 #include <CayenneLPP.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
 //
 // For normal use, we require that you edit the sketch to replace FILLMEIN
 // with values assigned by the TTN console. However, for regression tests,
@@ -15,16 +17,18 @@
 // LoRaWAN NwkSKey, network session key
 // This is the default Semtech key, which is used by the early prototype TTN
 // network.
-static const PROGMEM u1_t NWKSKEY[16] = { 0xC9, 0xF7, 0xA1, 0x68, 0xF7, 0x06, 0x46, 0x8A, 0xAC, 0x2B, 0x22, 0x62, 0xFD, 0x2C, 0x21, 0xBC };
+static const PROGMEM u1_t NWKSKEY[16] = { 0x32, 0xC0, 0x3C, 0xB3, 0xC4, 0xCB, 0xD2, 0xA1, 0xB9, 0x66, 0x90, 0xD3, 0x8A, 0x3B, 0x57, 0x1B };
 
 // LoRaWAN AppSKey, application session key
 // This is the default Semtech key, which is used by the early prototype TTN
 // network.
-static const u1_t PROGMEM APPSKEY[16] = { 0xA3, 0x2E, 0x24, 0x13, 0x99, 0xC4, 0x46, 0x57, 0x65, 0xAF, 0x97, 0xAA, 0x75, 0x7A, 0x32, 0x7E  };
+static const u1_t PROGMEM APPSKEY[16] = { 0xD4, 0x2B, 0x9A, 0x48, 0x04, 0xEB, 0x8D, 0x05, 0xC4, 0xF5, 0x88, 0x8D, 0x3F, 0x61, 0x50, 0x7D };
 
 // LoRaWAN end-device address (DevAddr)
-static const u4_t  DEVADDR = 0x260BC2DC; // <-- Change this address for every node!
+static const u4_t  DEVADDR = 0x260B552D; // <-- Change this address for every node!
 
+
+#define TEMP_PIN 4
 
 // These callbacks are only used in over-the-air activation, so they are
 // left empty here (we cannot leave them out completely unless
@@ -35,6 +39,9 @@ void os_getDevEui (u1_t* buf) { }
 void os_getDevKey (u1_t* buf) { }
 
 static CayenneLPP lpp(160);
+OneWire ds(TEMP_PIN);    
+DallasTemperature temp (&ds);
+
 static osjob_t sendjob;
 
 // Schedule TX every this many seconds (might become longer due to duty
@@ -152,7 +159,12 @@ void do_send(osjob_t* j){
     } else {
         // Prepare upstream data transmission at the next possible time.
         lpp.reset();
-        lpp.addTemperature(1,24.6f);
+        temp.requestTemperatures();
+        float t = temp.getTempCByIndex(0);
+        Serial.print ("Temp: ");
+        Serial.print(t);
+        Serial.println(" C. ####");
+        lpp.addTemperature(1,t);
 
         LMIC_setTxData2(1, lpp.getBuffer(), lpp.getSize(), 0);
         Serial.println(F("Packet queued"));
@@ -167,6 +179,8 @@ void setup() {
     delay(100);     // per sample code on RF_95 test
     Serial.println(F("Starting"));
 
+    temp.begin();
+    Serial.println(F("Starting Sensor"));
     #ifdef VCC_ENABLE
     // For Pinoccio Scout boards
     pinMode(VCC_ENABLE, OUTPUT);
